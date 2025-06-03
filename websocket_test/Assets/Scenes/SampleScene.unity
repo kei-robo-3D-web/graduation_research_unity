@@ -404,6 +404,11 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: -5725059797110936532, guid: 6d69ffecab852ab438daa775e55737ba, type: 3}
   m_PrefabInstance: {fileID: 298553402}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1074804027 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -7076603475454498552, guid: 6d69ffecab852ab438daa775e55737ba, type: 3}
+  m_PrefabInstance: {fileID: 298553402}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1120204459 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1814784054581089432, guid: 6d69ffecab852ab438daa775e55737ba, type: 3}
@@ -424,6 +429,11 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: -4197742848506465935, guid: 6d69ffecab852ab438daa775e55737ba, type: 3}
   m_PrefabInstance: {fileID: 298553402}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1552996436 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4710300092536800952, guid: 6d69ffecab852ab438daa775e55737ba, type: 3}
+  m_PrefabInstance: {fileID: 298553402}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1745468679
 GameObject:
   m_ObjectHideFlags: 0
@@ -434,6 +444,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1745468681}
   - component: {fileID: 1745468682}
+  - component: {fileID: 1745468683}
   m_Layer: 0
   m_Name: Director
   m_TagString: Untagged
@@ -463,7 +474,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1745468679}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8c6086e10445e694d96c5e4c6c4662f0, type: 3}
   m_Name: 
@@ -490,6 +501,40 @@ MonoBehaviour:
   - {fileID: 419788399}
   - {fileID: 298109515}
   - {fileID: 419788399}
+--- !u!114 &1745468683
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1745468679}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9353dbc8d2077c442916254d378dc554, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _connection: {fileID: 0}
+  hand:
+  - {fileID: 298553403}
+  - {fileID: 963344994}
+  - {fileID: 1791021173}
+  - {fileID: 257167002}
+  - {fileID: 0}
+  - {fileID: 1120204459}
+  - {fileID: 1074804027}
+  - {fileID: 617437068}
+  - {fileID: 0}
+  - {fileID: 956821441}
+  - {fileID: 1278811727}
+  - {fileID: 1910226204}
+  - {fileID: 0}
+  - {fileID: 1146040842}
+  - {fileID: 1802249347}
+  - {fileID: 1500022735}
+  - {fileID: 0}
+  - {fileID: 419788399}
+  - {fileID: 298109515}
+  - {fileID: 1552996436}
 --- !u!1 &1791021173 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -4126548312991999393, guid: 6d69ffecab852ab438daa775e55737ba, type: 3}
