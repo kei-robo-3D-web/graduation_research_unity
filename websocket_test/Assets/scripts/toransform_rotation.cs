@@ -33,7 +33,9 @@ public class toransform_rotation : MonoBehaviour
 
         for (int i = 0; i < 21; i++)
         {
-            handTransform[i] = hand[i].transform;
+            if (i != 4 && i != 8 && i != 12 && i != 16 && i != 20) {
+                handTransform[i] = hand[i].transform;
+            }
         }
     }
 
