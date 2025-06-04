@@ -33,9 +33,10 @@ public class toransform_rotation : MonoBehaviour
 
         for (int i = 0; i < 21; i++)
         {
-            if (i != 4 && i != 8 && i != 12 && i != 16 && i != 20) {
-                handTransform[i] = hand[i].transform;
-            }
+            //if (i != 4 && i != 8 && i != 12 && i != 16 && i != 20) {
+            //    handTransform[i] = hand[i].transform;
+            //}
+            handTransform[i] = hand[i].transform;
         }
     }
 
@@ -60,7 +61,7 @@ public class toransform_rotation : MonoBehaviour
                 Vector3[] landmarks = new Vector3[21];
                 for (int i = 0; i < 21; i++)
                 {
-                    landmarks[i] = new Vector3(data.hands[i].x, -data.hands[i].y + 0.002f, data.hands[i].z);
+                    landmarks[i] = new Vector3(data.hands[i].x, -data.hands[i].y, data.hands[i].z);
                 }
 
                 // 人差し指の回転適用 (5→6, 6→7, 7→8)
@@ -92,7 +93,11 @@ public class toransform_rotation : MonoBehaviour
     private void ApplyBoneRotation(int from, int to, Vector3[] landmarks)
     {
         Vector3 dir = (landmarks[to] - landmarks[from]).normalized;
+        dir.y = -dir.y;
+        //dir.x = -dir.x;
+        //dir.x = dir.x + 90f;
         handTransform[from].rotation = Quaternion.LookRotation(dir);
+        handTransform[from].rotation.x += handTransform[0].rotation.x;
     }
 
     private void OnErrorMessageReceived(WebSocketConnection connection, string errorMessage)
