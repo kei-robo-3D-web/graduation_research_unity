@@ -94,10 +94,10 @@ public class toransform_rotation : MonoBehaviour
     {
         Vector3 dir = (landmarks[to] - landmarks[from]).normalized;
         dir.y = -dir.y;
-        //dir.x = -dir.x;
+        dir.x = -dir.x;
         //dir.x = dir.x + 90f;
         handTransform[from].rotation = Quaternion.LookRotation(dir);
-        handTransform[from].rotation.x += handTransform[0].rotation.x;
+        //handTransform[from].rotation.x += handTransform[0].rotation.x;
     }
 
     private void OnErrorMessageReceived(WebSocketConnection connection, string errorMessage)
