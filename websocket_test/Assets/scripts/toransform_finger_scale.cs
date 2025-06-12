@@ -63,17 +63,19 @@ public class toransform_finger_scale : MonoBehaviour
                 Vector3[] landmarks = new Vector3[21];
                 for (int i = 0; i < 21; i++)
                 {
-                    landmarks[i] = new Vector3(data.hands[i].x, -data.hands[i].y, data.hands[i].z);
+                    landmarks[i] = new Vector3(data.hands[i].x, data.hands[i].y, data.hands[i].z);
                 }
 
-                for (int i = 5; i <= 8; i++) {
-                    euclid.x += landmarks[i].x;
-                    euclid.y += landmarks[i].y;
-                    euclid.z += landmarks[i].z;
-                }
+                euclid.x = (landmarks[8].x - landmarks[5].x);
+                euclid.y = (landmarks[8].y - landmarks[5].y);
+                euclid.z = 3 * (landmarks[8].z - landmarks[5].z - landmarks[0].z);
 
-                euclidDistance = euclid.magnitude;
+                euclidDistance = Vector3.Distance(landmarks[5], landmarks[8]);
+                double distance = Math.Sqrt(Math.Pow(euclid.x,2) + Math.Pow(euclid.y, 2) + Math.Pow(euclid.z, 2));
                 Debug.Log(euclidDistance);
+
+                //Debug.Log(landmarks[8]);
+                //Debug.Log(landmarks[5]);
 
                 euclid = new Vector3(0, 0, 0);
                 euclidDistance = 0.0;
