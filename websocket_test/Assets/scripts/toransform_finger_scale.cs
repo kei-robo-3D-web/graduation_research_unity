@@ -19,7 +19,7 @@ public class toransform_finger_scale : MonoBehaviour
     HandData receivedJson;
 
     Vector3 euclid;
-    double euclidDistance = 0.0;
+    float euclidDistance = 0.0f;
     private void Start()
     {
         _cts = new CancellationTokenSource();
@@ -38,6 +38,30 @@ public class toransform_finger_scale : MonoBehaviour
             //if (i != 4 && i != 8 && i != 12 && i != 16 && i != 20) {
             //    handTransform[i] = hand[i].transform;
             //}
+
+            if (i == 4 || i == 8 || i == 12 || i == 16 || i == 20)
+            {
+                if (i < 10)
+                {
+                    hand[i] = GameObject.Find("hand.00" + (i - 1).ToString() + "_end");
+                }
+                else {
+                    hand[i] = GameObject.Find("hand.0" + (i - 1).ToString() + "_end");
+                }
+                
+            }
+            else {
+                if (i < 10)
+                {
+                    hand[i] = GameObject.Find("hand.00" + (i - 1).ToString() + "_end");
+                }
+                else
+                {
+                    hand[i] = GameObject.Find("hand.0" + (i - 1).ToString() + "_end");
+                }
+            }
+            
+            
             handTransform[i] = hand[i].transform;
         }
     }
@@ -63,26 +87,27 @@ public class toransform_finger_scale : MonoBehaviour
                 Vector3[] landmarks = new Vector3[21];
                 for (int i = 0; i < 21; i++)
                 {
-                    landmarks[i] = new Vector3(data.hands[i].x, data.hands[i].y, data.hands[i].z);
+                    landmarks[i] = new Vector3(data.hands[i].x, -data.hands[i].y, data.hands[i].z);
                 }
 
                 euclid.x = (landmarks[8].x - landmarks[5].x);
                 euclid.y = (landmarks[8].y - landmarks[5].y);
-                euclid.z = 3 * (landmarks[8].z - landmarks[5].z - landmarks[0].z);
+                euclid.z = (landmarks[8].z - landmarks[5].z - landmarks[0].z);
 
-                euclidDistance = Vector3.Distance(landmarks[5], landmarks[8]);
+                euclidDistance = Vector3.Distance(landmarks[5], landmarks[0]);
                 double distance = Math.Sqrt(Math.Pow(euclid.x,2) + Math.Pow(euclid.y, 2) + Math.Pow(euclid.z, 2));
                 Debug.Log(euclidDistance);
-
+                handTransform[0].position = new Vector3(landmarks[0].x, landmarks[0].y, landmarks[0].z + (euclidDistance * 20.0f));
+                euclidDistance = 0.0f;
                 //Debug.Log(landmarks[8]);
                 //Debug.Log(landmarks[5]);
 
                 euclid = new Vector3(0, 0, 0);
-                euclidDistance = 0.0;
+                
                 // l·‚µŽw‚Ì‰ñ“]“K—p (5¨6, 6¨7, 7¨8)
-                ApplyBoneRotation(5, 6, landmarks);
-                ApplyBoneRotation(6, 7, landmarks);
-                ApplyBoneRotation(7, 8, landmarks);
+                //ApplyBoneRotation(5, 6, landmarks);
+                //ApplyBoneRotation(6, 7, landmarks);
+                //ApplyBoneRotation(7, 8, landmarks);
 
                 // Žè‚Ì‚Ð‚ç‰ñ“] (0, 5, 17)
                 Vector3 wrist = landmarks[0];
@@ -93,6 +118,7 @@ public class toransform_finger_scale : MonoBehaviour
                 Vector3 palmNormal = Vector3.Cross(dir1, dir2).normalized;
 
                 handTransform[0].rotation = Quaternion.LookRotation(palmNormal, dir1);
+
             }
             else
             {
