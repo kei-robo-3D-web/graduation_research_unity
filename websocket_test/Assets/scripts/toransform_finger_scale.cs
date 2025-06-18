@@ -21,6 +21,8 @@ public class toransform_finger_scale : MonoBehaviour
 
     Vector3 euclid;
     float euclidDistance = 0.0f;
+
+    Vector3[] nowTransform = new Vector3[21];
     private void Start()
     {
         _cts = new CancellationTokenSource();
@@ -68,6 +70,8 @@ public class toransform_finger_scale : MonoBehaviour
 
 
             handTransform[i] = hand[i].transform;
+            nowTransform[i] = handTransform[i].eulerAngles;
+
         }
     }
 
@@ -124,9 +128,9 @@ public class toransform_finger_scale : MonoBehaviour
 
             handTransform[0].rotation = Quaternion.LookRotation(palmNormal, dir1);
 
-            finger_rotation(handTransform, landmarks, 1,  4);//人差し指
-            finger_rotation(handTransform, landmarks, 5,  8);//人差し指
-            finger_rotation(handTransform, landmarks, 9, 12);//中指
+            finger_rotation(handTransform, landmarks,  1, 4);//人差し指
+            finger_rotation(handTransform, landmarks,  5, 8);//人差し指
+            finger_rotation(handTransform, landmarks,  9,12);//中指
             finger_rotation(handTransform, landmarks, 13,16);//薬指
             finger_rotation(handTransform, landmarks, 17,20);//小指
 
@@ -154,14 +158,21 @@ public class toransform_finger_scale : MonoBehaviour
     }
     void finger_rotation(Transform[] handTransform,Vector3[] landmarks,int baseFinger,int end) {
         float straightDistance = Vector3.Distance(landmarks[baseFinger], landmarks[end]);
-        float totalJointDistance = Vector3.Distance(landmarks[baseFinger],     landmarks[baseFinger + 1])
+        float totalJointDistance = Vector3.Distance(landmarks[baseFinger    ], landmarks[baseFinger + 1])
                                  + Vector3.Distance(landmarks[baseFinger + 1], landmarks[baseFinger + 2])
                                  + Vector3.Distance(landmarks[baseFinger + 2], landmarks[end]);
         float bendRatio = Mathf.Clamp01(straightDistance / totalJointDistance);
         float angle = (1f - bendRatio) * 90.0f;
-
+        
         for (int i = baseFinger; i < end; i++) {
-            handTransform[i].localRotation = Quaternion.Euler(0, 0, angle);
+            if (i == 1)
+            {
+                handTransform[i].localRotation = Quaternion.Euler(angle, -69f, -26.5f);
+            }
+            else {
+                handTransform[i].localRotation = Quaternion.Euler(angle, 0, 0);
+            }
+                
         }
     }
 
