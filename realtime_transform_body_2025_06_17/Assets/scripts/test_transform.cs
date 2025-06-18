@@ -9,6 +9,8 @@ public class test_transform : MonoBehaviour
     Vector3 handPos;
 
     // Start is called before the first frame update
+    //g‚¤ƒ{[ƒ“‚Í11,12,13,14,15,16,23,24,25,26,27,28,31,32‚Ì14ŒÂ
+
     void Start()
     {
         for (int i = 0; i < 21; i++)
