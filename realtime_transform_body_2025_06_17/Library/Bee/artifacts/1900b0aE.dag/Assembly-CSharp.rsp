@@ -365,7 +365,6 @@
 -analyzer:"C:/Program Files/Unity/Hub/Editor/2022.3.62f1/Editor/Data/Tools/Unity.SourceGenerators/Unity.SourceGenerators.dll"
 "Assets/scripts/test.cs"
 "Assets/scripts/test_transform.cs"
-"Assets/scripts/toransform_finger_scale.cs"
 "Assets/scripts/toransform_rotation.cs"
 -langversion:9.0
 /deterministic

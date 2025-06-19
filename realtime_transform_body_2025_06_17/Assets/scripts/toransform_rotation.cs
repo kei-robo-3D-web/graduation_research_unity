@@ -13,10 +13,28 @@ public class toransform_rotation : MonoBehaviour
     private bool _shouldReconnect = true;
     private CancellationTokenSource _cts;
 
-    public GameObject[] hand = new GameObject[21];
-    Transform[] handTransform = new Transform[21];
+    public GameObject[] body  = new GameObject[14];
+    Transform[] bodyTransform = new Transform[14];
 
-    HandData receivedJson;
+    BodyData receivedJson;
+
+    public enum landmarks
+    {
+        sholderL,
+        sholderR,
+        elbowL,
+        elbowR,
+        handL,
+        handR,
+        hipL,
+        hipR,
+        kneeL,
+        kneeR,
+        ankleL,
+        ankleR,
+        footL,
+        footR
+    }
 
     private void Start()
     {
@@ -31,12 +49,30 @@ public class toransform_rotation : MonoBehaviour
 
         SendMessagesPeriodically(_cts.Token).Forget();
 
-        for (int i = 0; i < 21; i++)
+        body[(int)landmarks.sholderL] = GameObject.Find("body.011");
+        body[(int)landmarks.sholderR] = GameObject.Find("body.012");
+
+        body[(int)landmarks.  elbowL] = GameObject.Find("body.013");
+        body[(int)landmarks.  elbowR] = GameObject.Find("body.014");
+
+        body[(int)landmarks.   handL] = GameObject.Find("body.015");
+        body[(int)landmarks.   handR] = GameObject.Find("body.016");
+
+        body[(int)landmarks.    hipL] = GameObject.Find("body.023");
+        body[(int)landmarks.    hipR] = GameObject.Find("body.024");
+
+        body[(int)landmarks.   kneeL] = GameObject.Find("body.025");
+        body[(int)landmarks.   kneeR] = GameObject.Find("body.026");
+
+        body[(int)landmarks.  ankleL] = GameObject.Find("body.027");
+        body[(int)landmarks.  ankleR] = GameObject.Find("body.028");
+
+        body[(int)landmarks.   footL] = GameObject.Find("body.027_end");
+        body[(int)landmarks.   footR] = GameObject.Find("body.028_end");
+
+        for (int i = 0; i < 14; i++)
         {
-            //if (i != 4 && i != 8 && i != 12 && i != 16 && i != 20) {
-            //    handTransform[i] = hand[i].transform;
-            //}
-            handTransform[i] = hand[i].transform;
+            bodyTransform[i] = body[i].transform;
         }
     }
 
@@ -51,33 +87,24 @@ public class toransform_rotation : MonoBehaviour
 
     private void OnMessageReceived(WebSocketConnection connection, WebSocketMessage message)
     {
-        Debug.Log($"Raw JSON from server: {message.String}");
+        //Debug.Log($"Raw JSON from server: {message.String}");
+        
+
 
         try
         {
-            var data = JsonConvert.DeserializeObject<HandData>(message.String);
-            if (data != null && data.hands != null && data.hands.Count >= 21)
-            {
-                Vector3[] landmarks = new Vector3[21];
-                for (int i = 0; i < 21; i++)
+            var data = JsonConvert.DeserializeObject<BodyData>(message.String);
+            Debug.Log($"Raw JSON from server: {data.bodys.Count}");
+            //if (data != null && data.bodys != null && data.bodys.Count >= 14)
+            if (data != null && data.bodys != null)
                 {
-                    landmarks[i] = new Vector3(data.hands[i].x, -data.hands[i].y, data.hands[i].z);
+                Vector3[] landmarks = new Vector3[14];
+                for (int i = 0; i < 14; i++)
+                {
+                    landmarks[i] = new Vector3(data.bodys[i].x, -data.bodys[i].y, data.bodys[i].z);
+                    bodyTransform[i].position = landmarks[i];
                 }
 
-                // l·‚µŽw‚Ì‰ñ“]“K—p (5¨6, 6¨7, 7¨8)
-                ApplyBoneRotation(5, 6, landmarks);
-                ApplyBoneRotation(6, 7, landmarks);
-                ApplyBoneRotation(7, 8, landmarks);
-
-                // Žè‚Ì‚Ð‚ç‰ñ“] (0, 5, 17)
-                Vector3 wrist = landmarks[0];
-                Vector3 indexBase = landmarks[5];
-                Vector3 pinkyBase = landmarks[17];
-                Vector3 dir1 = (indexBase - wrist).normalized;
-                Vector3 dir2 = (pinkyBase - wrist).normalized;
-                Vector3 palmNormal = Vector3.Cross(dir1, dir2).normalized;
-
-                handTransform[0].rotation = Quaternion.LookRotation(palmNormal, dir1);
             }
             else
             {
@@ -90,15 +117,6 @@ public class toransform_rotation : MonoBehaviour
         }
     }
 
-    private void ApplyBoneRotation(int from, int to, Vector3[] landmarks)
-    {
-        Vector3 dir = (landmarks[to] - landmarks[from]).normalized;
-        dir.y = -dir.y;
-        dir.x = -dir.x;
-        //dir.x = dir.x + 90f;
-        handTransform[from].rotation = Quaternion.LookRotation(dir);
-        //handTransform[from].rotation.x += handTransform[0].rotation.x;
-    }
 
     private void OnErrorMessageReceived(WebSocketConnection connection, string errorMessage)
     {
@@ -142,9 +160,9 @@ public class toransform_rotation : MonoBehaviour
     }
 
     [Serializable]
-    public class HandData
+    public class BodyData
     {
-        public List<ReceivedJson> hands;
+        public List<ReceivedJson> bodys;
     }
 
     [Serializable]
