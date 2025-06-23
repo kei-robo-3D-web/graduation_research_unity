@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "com.mikeschweitzer.websocket": "file:C:/Users/kuram/Downloads/unity-websocket-main/unity-websocket-main",
+    "com.unity.animation.rigging": "1.2.1",
     "com.unity.collab-proxy": "2.8.2",
     "com.unity.feature.development": "1.0.1",
     "com.unity.nuget.newtonsoft-json": "3.2.1",
