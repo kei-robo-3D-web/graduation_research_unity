@@ -31,6 +31,12 @@ public class IKTest : MonoBehaviour
 
         IKObject[(int)IKtarget.kneeL] = GameObject.Find("LeftHintKnee" );
         IKObject[(int)IKtarget.kneeR] = GameObject.Find("RightHintKnee");
+
+        for (int i = 0; i < 8; i++) {
+            IKTransform[i] = IKObject[i].transform;
+        }
+
+
     }
 
 

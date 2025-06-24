@@ -13,27 +13,25 @@ public class toransform_rotation : MonoBehaviour
     private bool _shouldReconnect = true;
     private CancellationTokenSource _cts;
 
-    public GameObject[] body  = new GameObject[14];
-    Transform[] bodyTransform = new Transform[14];
-
     BodyData receivedJson;
+    float euclidDistance = 0.0f;
+    Vector3 midlePoint;
 
-    public enum landmarks
+    public GameObject[] IKObject = new GameObject[8];
+    public Transform[] IKTransform = new Transform[8];
+
+    public GameObject model;
+    public Transform modelTransform;
+    public enum IKtarget
     {
-        sholderL,
-        sholderR,
         elbowL,
         elbowR,
         handL,
         handR,
-        hipL,
-        hipR,
-        kneeL,
-        kneeR,
-        ankleL,
-        ankleR,
         footL,
-        footR
+        footR,
+        kneeL,
+        kneeR
     }
 
     private void Start()
@@ -49,30 +47,23 @@ public class toransform_rotation : MonoBehaviour
 
         SendMessagesPeriodically(_cts.Token).Forget();
 
-        body[(int)landmarks.sholderL] = GameObject.Find("body.011");
-        body[(int)landmarks.sholderR] = GameObject.Find("body.012");
+        IKObject[(int)IKtarget.handL] = GameObject.Find("LeftHandTarget" );
+        IKObject[(int)IKtarget.handR] = GameObject.Find("RightHandTarget");
 
-        body[(int)landmarks.  elbowL] = GameObject.Find("body.013");
-        body[(int)landmarks.  elbowR] = GameObject.Find("body.014");
+        IKObject[(int)IKtarget.elbowL] = GameObject.Find("LeftHintElbow" );
+        IKObject[(int)IKtarget.elbowR] = GameObject.Find("RightHintElbow");
 
-        body[(int)landmarks.   handL] = GameObject.Find("body.015");
-        body[(int)landmarks.   handR] = GameObject.Find("body.016");
+        IKObject[(int)IKtarget.footL] = GameObject.Find("LeftFootTarget" );
+        IKObject[(int)IKtarget.footR] = GameObject.Find("RightFootTarget");
 
-        body[(int)landmarks.    hipL] = GameObject.Find("body.023");
-        body[(int)landmarks.    hipR] = GameObject.Find("body.024");
+        IKObject[(int)IKtarget.kneeL] = GameObject.Find("LeftHintKnee" );
+        IKObject[(int)IKtarget.kneeR] = GameObject.Find("RightHintKnee");
 
-        body[(int)landmarks.   kneeL] = GameObject.Find("body.025");
-        body[(int)landmarks.   kneeR] = GameObject.Find("body.026");
+        modelTransform = model.transform;
 
-        body[(int)landmarks.  ankleL] = GameObject.Find("body.027");
-        body[(int)landmarks.  ankleR] = GameObject.Find("body.028");
-
-        body[(int)landmarks.   footL] = GameObject.Find("body.027_end");
-        body[(int)landmarks.   footR] = GameObject.Find("body.028_end");
-
-        for (int i = 0; i < 14; i++)
+        for (int i = 0; i < 8; i++)
         {
-            bodyTransform[i] = body[i].transform;
+            IKTransform[i] = IKObject[i].transform;
         }
     }
 
@@ -87,7 +78,7 @@ public class toransform_rotation : MonoBehaviour
 
     private void OnMessageReceived(WebSocketConnection connection, WebSocketMessage message)
     {
-        //Debug.Log($"Raw JSON from server: {message.String}");
+        Debug.Log($"Raw JSON from server: {message.String}");
         
 
 
@@ -98,13 +89,23 @@ public class toransform_rotation : MonoBehaviour
             //if (data != null && data.bodys != null && data.bodys.Count >= 14)
             if (data != null && data.bodys != null)
                 {
-                Vector3[] landmarks = new Vector3[14];
-                for (int i = 0; i < 14; i++)
+                Vector3[] landmarks = new Vector3[10];
+                for (int i = 0; i < 10; i++)
                 {
                     landmarks[i] = new Vector3(data.bodys[i].x, -data.bodys[i].y, data.bodys[i].z);
-                    bodyTransform[i].position = landmarks[i];
+                    //IKTransform[i].position = landmarks[i];
                 }
 
+                euclidDistance = Vector3.Distance(landmarks[3], landmarks[0]);
+                midlePoint = Vector3.Lerp(landmarks[0],landmarks[1], 0.5f);
+
+                //modelTransform.position = new Vector3(midlePoint.x, midlePoint.y + 20, -(midlePoint.z + (euclidDistance * 20.0f)));
+
+
+                for (int i = 0; i < 8; i++)
+                {
+                    IKTransform[i].position = new Vector3(landmarks[i].x, landmarks[i].y, -(landmarks[i].z + (euclidDistance * 20.0f)));
+                }
             }
             else
             {

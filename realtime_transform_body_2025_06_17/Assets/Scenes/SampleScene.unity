@@ -1485,7 +1485,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1745468681}
-  - component: {fileID: 1745468687}
+  - component: {fileID: 1745468682}
   m_Layer: 0
   m_Name: Director
   m_TagString: Untagged
@@ -1508,20 +1508,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1745468687
+--- !u!114 &1745468682
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1745468679}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9353dbc8d2077c442916254d378dc554, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   _connection: {fileID: 0}
-  body:
+  IKObject:
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
@@ -1530,12 +1530,17 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
+  IKTransform:
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  model: {fileID: 235901171}
+  modelTransform: {fileID: 0}
 --- !u!1 &1886667580
 GameObject:
   m_ObjectHideFlags: 0
