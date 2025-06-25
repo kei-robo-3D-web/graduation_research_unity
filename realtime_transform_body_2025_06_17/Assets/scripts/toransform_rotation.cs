@@ -15,6 +15,7 @@ public class toransform_rotation : MonoBehaviour
 
     BodyData receivedJson;
     float euclidDistance = 0.0f;
+    float scale = 1.5f;
     Vector3 midlePoint;
 
     public GameObject[] IKObject = new GameObject[8];
@@ -105,7 +106,7 @@ public class toransform_rotation : MonoBehaviour
                 for (int i = 0; i < 8; i++)
                 {
                     //IKTransform[i].position = new Vector3(landmarks[i].x, landmarks[i].y, -(landmarks[i].z + (euclidDistance * 20.0f)));
-                    IKTransform[i].position = new Vector3(landmarks[i + 2].x , landmarks[i + 2].y, -(landmarks[i + 2].z + (euclidDistance)));
+                    IKTransform[i].position = new Vector3(landmarks[i + 2].x * scale, landmarks[i + 2].y * scale, -(landmarks[i + 2].z + (euclidDistance)));
                 }
             }
             else
