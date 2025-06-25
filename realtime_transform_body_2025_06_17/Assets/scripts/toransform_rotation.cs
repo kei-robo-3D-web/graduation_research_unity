@@ -24,14 +24,14 @@ public class toransform_rotation : MonoBehaviour
     public Transform modelTransform;
     public enum IKtarget
     {
-        elbowL,
         elbowR,
-        handL,
+        elbowL,
         handR,
-        footL,
+        handL,
         footR,
-        kneeL,
-        kneeR
+        footL,
+        kneeR,
+        kneeL
     }
 
     private void Start()
@@ -47,17 +47,17 @@ public class toransform_rotation : MonoBehaviour
 
         SendMessagesPeriodically(_cts.Token).Forget();
 
-        IKObject[(int)IKtarget.handL] = GameObject.Find("LeftHandTarget" );
         IKObject[(int)IKtarget.handR] = GameObject.Find("RightHandTarget");
+        IKObject[(int)IKtarget.handL] = GameObject.Find("LeftHandTarget");
 
-        IKObject[(int)IKtarget.elbowL] = GameObject.Find("LeftHintElbow" );
         IKObject[(int)IKtarget.elbowR] = GameObject.Find("RightHintElbow");
+        IKObject[(int)IKtarget.elbowL] = GameObject.Find("LeftHintElbow");
 
-        IKObject[(int)IKtarget.footL] = GameObject.Find("LeftFootTarget" );
         IKObject[(int)IKtarget.footR] = GameObject.Find("RightFootTarget");
+        IKObject[(int)IKtarget.footL] = GameObject.Find("LeftFootTarget");
 
-        IKObject[(int)IKtarget.kneeL] = GameObject.Find("LeftHintKnee" );
         IKObject[(int)IKtarget.kneeR] = GameObject.Find("RightHintKnee");
+        IKObject[(int)IKtarget.kneeL] = GameObject.Find("LeftHintKnee");
 
         modelTransform = model.transform;
 
@@ -92,19 +92,20 @@ public class toransform_rotation : MonoBehaviour
                 Vector3[] landmarks = new Vector3[10];
                 for (int i = 0; i < 10; i++)
                 {
-                    landmarks[i] = new Vector3(data.bodys[i].x, -data.bodys[i].y, data.bodys[i].z);
+                    landmarks[i] = new Vector3(data.bodys[i].x - 0.5f, -data.bodys[i].y + 1.5f, data.bodys[i].z);
                     //IKTransform[i].position = landmarks[i];
                 }
 
                 euclidDistance = Vector3.Distance(landmarks[3], landmarks[0]);
                 midlePoint = Vector3.Lerp(landmarks[0],landmarks[1], 0.5f);
 
-                //modelTransform.position = new Vector3(midlePoint.x, midlePoint.y + 20, -(midlePoint.z + (euclidDistance * 20.0f)));
-
+                //modelTransform.position = new Vector3(midlePoint.x, midlePoint.y, -(midlePoint.z + (euclidDistance * 20.0f)));
+                modelTransform.position = new Vector3(midlePoint.x, midlePoint.y, -(midlePoint.z));
 
                 for (int i = 0; i < 8; i++)
                 {
-                    IKTransform[i].position = new Vector3(landmarks[i].x, landmarks[i].y, -(landmarks[i].z + (euclidDistance * 20.0f)));
+                    //IKTransform[i].position = new Vector3(landmarks[i].x, landmarks[i].y, -(landmarks[i].z + (euclidDistance * 20.0f)));
+                    IKTransform[i].position = new Vector3(landmarks[i + 2].x , landmarks[i + 2].y, -(landmarks[i + 2].z + (euclidDistance)));
                 }
             }
             else

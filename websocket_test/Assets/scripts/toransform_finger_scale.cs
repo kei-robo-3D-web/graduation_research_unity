@@ -110,7 +110,7 @@ public class toransform_finger_scale : MonoBehaviour
             //Debug.Log(landmarks[8]);
             //Debug.Log(landmarks[5]);
 
-            euclid = new Vector3(0, 0, 0);
+            euclid = new Vector3(0, 0, 0);.
 
             // 人差し指の回転適用 (5→6, 6→7, 7→8)
             //ApplyBoneRotation(5, 6, landmarks);
