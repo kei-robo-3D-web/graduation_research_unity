@@ -23,7 +23,7 @@ public class toransform_rotation : MonoBehaviour
 
     float baseDepth = 0.75f;
     float depth = 0.0f;
-    float scale = 0.0f;
+    float scale = 1.5f;
     Vector3 midlePoint;
 
     public GameObject[] IKObject = new GameObject[8];
@@ -111,13 +111,13 @@ public class toransform_rotation : MonoBehaviour
 
                 currentDistance = Vector3.Distance(landmarks[0], landmarks[4]);
                 scaleFactor = desiredDistance / Mathf.Max(0.01f, currentDistance);
-                for (int i = 0; i < landmarks.Length; i++)
-                {
-                    landmarks[i] = (landmarks[i] - landmarks[0]) * scaleFactor + landmarks[0];
-                }
+                //for (int i = 0; i < landmarks.Length; i++)
+                //{
+                //    landmarks[i] = (landmarks[i] - landmarks[0]) * scaleFactor + landmarks[0];
+                //}
 
                 depth = Mathf.Abs(landmarks[0].z);
-                scale = baseDepth / Mathf.Max(0.001f, depth);
+                //scale = baseDepth / Mathf.Max(0.001f, depth);
 
                 //modelTransform.position = new Vector3(midlePoint.x, midlePoint.y, -(midlePoint.z + (euclidDistance * 20.0f)));
                 modelTransform.position = new Vector3(midlePoint.x, midlePoint.y, -(midlePoint.z));
@@ -125,8 +125,8 @@ public class toransform_rotation : MonoBehaviour
 
                 for (int i = 0; i < 8; i++)
                 {
-                    IKTransform[i].position = new Vector3(landmarks[i + 2].x, landmarks[i + 2].y, -(landmarks[i + 2].z));
-                    //IKTransform[i].position = new Vector3(landmarks[i + 2].x * scale, landmarks[i + 2].y * scale, -(landmarks[i + 2].z));
+                    //IKTransform[i].position = new Vector3(landmarks[i + 2].x, landmarks[i + 2].y, -(landmarks[i + 2].z));
+                    IKTransform[i].position = new Vector3(landmarks[i + 2].x * scale, landmarks[i + 2].y * scale, -(landmarks[i + 2].z + 0.5f));
                 }
             }
             else
