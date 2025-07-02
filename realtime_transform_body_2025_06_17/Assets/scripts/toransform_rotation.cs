@@ -57,16 +57,16 @@ public class toransform_rotation : MonoBehaviour
         SendMessagesPeriodically(_cts.Token).Forget();
 
         IKObject[(int)IKtarget.handR] = GameObject.Find("RightHandTarget");
-        IKObject[(int)IKtarget.handL] = GameObject.Find("LeftHandTarget");
+        IKObject[(int)IKtarget.handL] = GameObject.Find("LeftHandTarget" );
 
         IKObject[(int)IKtarget.elbowR] = GameObject.Find("RightHintElbow");
-        IKObject[(int)IKtarget.elbowL] = GameObject.Find("LeftHintElbow");
+        IKObject[(int)IKtarget.elbowL] = GameObject.Find("LeftHintElbow" );
 
         IKObject[(int)IKtarget.footR] = GameObject.Find("RightFootTarget");
-        IKObject[(int)IKtarget.footL] = GameObject.Find("LeftFootTarget");
+        IKObject[(int)IKtarget.footL] = GameObject.Find("LeftFootTarget" );
 
         IKObject[(int)IKtarget.kneeR] = GameObject.Find("RightHintKnee");
-        IKObject[(int)IKtarget.kneeL] = GameObject.Find("LeftHintKnee");
+        IKObject[(int)IKtarget.kneeL] = GameObject.Find("LeftHintKnee" );
 
         modelTransform = model.transform;
 
@@ -105,16 +105,15 @@ public class toransform_rotation : MonoBehaviour
                     //IKTransform[i].position = landmarks[i];
                 }
 
-
                 euclidDistance = Vector3.Distance(landmarks[3], landmarks[0]);
                 midlePoint = Vector3.Lerp(landmarks[0],landmarks[1], 0.5f);
 
-                currentDistance = Vector3.Distance(landmarks[0], landmarks[4]);
+                currentDistance = Vector3.Distance(landmarks[0], landmarks[1]);
                 scaleFactor = desiredDistance / Mathf.Max(0.01f, currentDistance);
-                //for (int i = 0; i < landmarks.Length; i++)
-                //{
-                //    landmarks[i] = (landmarks[i] - landmarks[0]) * scaleFactor + landmarks[0];
-                //}
+                for (int i = 0; i < landmarks.Length; i++)
+                {
+                    landmarks[i] = (landmarks[i] - landmarks[0]) * scaleFactor + landmarks[0];
+                }
 
                 depth = Mathf.Abs(landmarks[0].z);
                 //scale = baseDepth / Mathf.Max(0.001f, depth);
@@ -123,11 +122,13 @@ public class toransform_rotation : MonoBehaviour
                 modelTransform.position = new Vector3(midlePoint.x, midlePoint.y, -(midlePoint.z));
 
 
-                for (int i = 0; i < 8; i++)
-                {
-                    //IKTransform[i].position = new Vector3(landmarks[i + 2].x, landmarks[i + 2].y, -(landmarks[i + 2].z));
-                    IKTransform[i].position = new Vector3(landmarks[i + 2].x * scale, landmarks[i + 2].y * scale, -(landmarks[i + 2].z + 0.5f));
-                }
+                //for (int i = 0; i < 8; i++)
+                //{
+                //    //IKTransform[i].position = new Vector3(landmarks[i + 2].x, landmarks[i + 2].y, -(landmarks[i + 2].z));
+                //    IKTransform[i].position = new Vector3(landmarks[i + 2].x * scale, landmarks[i + 2].y * scale * 0.7f, -(landmarks[i + 2].z ) - 0.8f);
+                //}
+                IKTransform[(int)IKtarget.handR].position = new Vector3(landmarks[(int)IKtarget.handR + 2].x * scale, landmarks[(int)IKtarget.handR + 2].y * scale * 0.7f, -(landmarks[(int)IKtarget.handR + 2].z) - 0.8f);
+                IKTransform[(int)IKtarget.handL].position = new Vector3(landmarks[(int)IKtarget.handL + 2].x * scale, landmarks[(int)IKtarget.handL + 2].y * scale * 0.7f, -(landmarks[(int)IKtarget.handL + 2].z) - 0.8f);
             }
             else
             {
