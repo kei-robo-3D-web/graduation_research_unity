@@ -1,11 +1,15 @@
-using System;
+﻿using System;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
 using System.Threading;
 using MikeSchweitzer.WebSocket;
 using Newtonsoft.Json;
 using System.Collections.Generic;
-using UnityEngine.XR;
+
+using UnityEngine.Animations;
+
+
+
 
 public class toransform_muscle : MonoBehaviour
 {
@@ -14,34 +18,14 @@ public class toransform_muscle : MonoBehaviour
     private bool _shouldReconnect = true;
     private CancellationTokenSource _cts;
 
-    BodyData receivedJson;
-    float euclidDistance = 0.0f;
-
-    float currentDistance = 0.0f;
-    float desiredDistance = 0.5f;
-    float scaleFactor = 0.0f;
-
-    float baseDepth = 0.75f;
-    float depth = 0.0f;
-    float scale = 1.5f;
-    Vector3 midlePoint;
-
-    public GameObject[] IKObject = new GameObject[8];
-    public Transform[] IKTransform = new Transform[8];
+    private HumanPoseHandler poseHandler;
+    public HumanPose pose;
 
     public GameObject model;
-    public Transform modelTransform;
-    public enum IKtarget
-    {
-        elbowR,
-        elbowL,
-        handR,
-        handL,
-        footR,
-        footL,
-        kneeR,
-        kneeL
-    }
+    
+
+    public Animator animator1;
+
 
     private void Start()
     {
@@ -56,24 +40,31 @@ public class toransform_muscle : MonoBehaviour
 
         SendMessagesPeriodically(_cts.Token).Forget();
 
-        IKObject[(int)IKtarget.handR] = GameObject.Find("RightHandTarget");
-        IKObject[(int)IKtarget.handL] = GameObject.Find("LeftHandTarget" );
-
-        IKObject[(int)IKtarget.elbowR] = GameObject.Find("RightHintElbow");
-        IKObject[(int)IKtarget.elbowL] = GameObject.Find("LeftHintElbow" );
-
-        IKObject[(int)IKtarget.footR] = GameObject.Find("RightFootTarget");
-        IKObject[(int)IKtarget.footL] = GameObject.Find("LeftFootTarget" );
-
-        IKObject[(int)IKtarget.kneeR] = GameObject.Find("RightHintKnee");
-        IKObject[(int)IKtarget.kneeL] = GameObject.Find("LeftHintKnee" );
-
-        modelTransform = model.transform;
-
-        for (int i = 0; i < 8; i++)
+        if (model == null)
         {
-            IKTransform[i] = IKObject[i].transform;
+            Debug.LogError("❌ modelがInspectorで設定されていません");
+            return;
         }
+
+        animator1 = model.GetComponent<Animator>();
+        if (animator1 == null)
+        {
+            Debug.LogError("❌ Animatorが見つかりません");
+            return;
+        }
+
+        if (animator1.avatar == null || !animator1.avatar.isHuman)
+        {
+            Debug.LogError("❌ Avatarが設定されていない、またはHumanoidでありません");
+            return;
+        }
+
+        poseHandler = new HumanPoseHandler(animator1.avatar, animator1.transform);
+        poseHandler.GetHumanPose(ref pose);
+        pose.muscles[42] = -1.0f;
+        poseHandler.SetHumanPose(ref pose);
+
+        Debug.Log("✅ poseHandler 初期化成功、muscle[42] を 0.5 に設定しました");
     }
 
     private void OnStateChanged(WebSocketConnection connection, WebSocketState oldState, WebSocketState newState)
@@ -97,15 +88,17 @@ public class toransform_muscle : MonoBehaviour
             Debug.Log($"Raw JSON from server: {data.bodys.Count}");
             //if (data != null && data.bodys != null && data.bodys.Count >= 14)
             if (data != null && data.bodys != null)
-                {
+            {
                 Vector3[] landmarks = new Vector3[10];
                 for (int i = 0; i < 10; i++)
                 {
                     landmarks[i] = new Vector3(data.bodys[i].x - 0.5f, -data.bodys[i].y + 1.5f, data.bodys[i].z);
                     //IKTransform[i].position = landmarks[i];
                 }
+                Quaternion upperArmRotation = GetBoneRotation(landmarks[2], landmarks[3]); // ← 前述の関数を使う
 
-               
+                
+
             }
             else
             {
@@ -159,6 +152,13 @@ public class toransform_muscle : MonoBehaviour
             _connection = null;
         }
     }
+    Quaternion GetBoneRotation(Vector3 from, Vector3 to)
+    {
+        Vector3 direction = (to - from).normalized;
+        if (direction == Vector3.zero) return Quaternion.identity;
+        return Quaternion.LookRotation(direction);
+    }
+
 
     [Serializable]
     public class BodyData
