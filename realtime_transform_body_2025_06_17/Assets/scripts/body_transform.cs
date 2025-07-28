@@ -48,7 +48,7 @@ public class body_transform : MonoBehaviour
         poseHandler.GetHumanPose(ref pose);
         //pose.muscles[42] = -1.0f;
 
-        sholderBoneR
+        sholderBoneR;
         
     }
 
