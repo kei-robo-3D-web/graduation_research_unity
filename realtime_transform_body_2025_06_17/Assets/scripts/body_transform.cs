@@ -22,7 +22,6 @@ public class body_transform : MonoBehaviour
 
     Vector3 sholder2ElbowR;
 
-
     private void Start()
     {
         if (model == null)
@@ -48,7 +47,7 @@ public class body_transform : MonoBehaviour
         poseHandler.GetHumanPose(ref pose);
         //pose.muscles[42] = -1.0f;
 
-        sholderBoneR;
+        //sholderBoneR;
         
     }
 

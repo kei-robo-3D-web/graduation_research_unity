@@ -1,11 +1,10 @@
-using System;
+﻿using System;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
 using System.Threading;
 using MikeSchweitzer.WebSocket;
 using Newtonsoft.Json;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 
 public class toransform_finger_scale : MonoBehaviour
 {
@@ -23,8 +22,16 @@ public class toransform_finger_scale : MonoBehaviour
     float euclidDistance = 0.0f;
 
     Vector3[] nowTransform = new Vector3[21];
+
+    // デバッグ用フラグ
+    [Header("Debug Settings")]
+    public bool showDebugLogs = true;
+    private int messageCount = 0;
+
     private void Start()
     {
+        Debug.Log("=== HandTracking Start ===");
+
         _cts = new CancellationTokenSource();
 
         _connection = gameObject.AddComponent<WebSocketConnection>();
@@ -34,21 +41,19 @@ public class toransform_finger_scale : MonoBehaviour
         _connection.MessageReceived += OnMessageReceived;
         _connection.ErrorMessageReceived += OnErrorMessageReceived;
 
+        Debug.Log($"WebSocket接続開始: {_url}");
+
         SendMessagesPeriodically(_cts.Token).Forget();
 
+        // 手のGameObjectを取得
+        int foundCount = 0;
         for (int i = 0; i < 21; i++)
         {
-            //if (i != 4 && i != 8 && i != 12 && i != 16 && i != 20) {
-            //    handTransform[i] = hand[i].transform;
-            //}
-
             if (i == 4 || i == 8 || i == 12 || i == 16 || i == 20)
             {
-
                 if (i < 10 && i != 0)
                 {
                     hand[i] = GameObject.Find("hand.00" + (i - 1).ToString() + "_end");
-                    //Debug.Log("hand.00" + (i - 1).ToString() + "_end");
                 }
                 else
                 {
@@ -60,7 +65,6 @@ public class toransform_finger_scale : MonoBehaviour
                 if (i < 10)
                 {
                     hand[i] = GameObject.Find("hand.00" + (i).ToString());
-                    Debug.Log("hand.00" + (i).ToString());
                 }
                 else
                 {
@@ -68,57 +72,128 @@ public class toransform_finger_scale : MonoBehaviour
                 }
             }
 
-
-            handTransform[i] = hand[i].transform;
-            nowTransform[i] = handTransform[i].eulerAngles;
-
+            if (hand[i] != null)
+            {
+                handTransform[i] = hand[i].transform;
+                nowTransform[i] = handTransform[i].eulerAngles;
+                foundCount++;
+            }
+            else
+            {
+                Debug.LogWarning($"⚠ hand[{i}] GameObject not found!");
+            }
         }
+
+        Debug.Log($"✅ {foundCount}/21 hand GameObjects found");
     }
 
     private void OnStateChanged(WebSocketConnection connection, WebSocketState oldState, WebSocketState newState)
     {
-        Debug.Log($"WebSocket state changed from {oldState} to {newState}");
-        if (newState == WebSocketState.Disconnected && _shouldReconnect)
+        Debug.Log($"🔄 WebSocket state: {oldState} → {newState}");
+
+        if (newState == WebSocketState.Connected)
         {
+            Debug.Log("✅ WebSocket接続成功！");
+        }
+        else if (newState == WebSocketState.Disconnected && _shouldReconnect)
+        {
+            Debug.LogWarning("🔴 WebSocket切断 - 再接続試行...");
             Reconnect().Forget();
         }
     }
 
+    // toransform_finger_scale.cs
+
+
+
+    [Serializable]
+    public class ReceivedJson
+    {
+        public float x;
+        public float y;
+        public float z;
+    }
+
     private void OnMessageReceived(WebSocketConnection connection, WebSocketMessage message)
     {
-        //Debug.Log($"Raw JSON from server: {message.String}");
+        messageCount++;
 
-
-        var data = JsonConvert.DeserializeObject<HandData>(message.String);
-        if (data != null && data.hands != null && data.hands.Count >= 21)
+        if (showDebugLogs && messageCount % 30 == 1)
         {
-            Vector3[] landmarks = new Vector3[21];
-            for (int i = 0; i < 21; i++)
+            Debug.Log($"📨 メッセージ受信 #{messageCount}");
+        }
+
+        string messageString = message.String;
+
+        if (string.IsNullOrEmpty(messageString) || !messageString.StartsWith("{"))
+        {
+            Debug.LogWarning($"⚠ JSONでないメッセージをスキップ: {messageString}");
+            return;
+        }
+
+        try
+        {
+            var data = JsonConvert.DeserializeObject<HandData>(messageString);
+
+            if (data == null)
             {
-                landmarks[i] = new Vector3(data.hands[i].x, -data.hands[i].y, data.hands[i].z);
+                Debug.LogError("❌ デシリアライズ結果がnull");
+                return;
             }
 
-            euclid.x = (landmarks[8].x - landmarks[5].x);
-            euclid.y = (landmarks[8].y - landmarks[5].y);
-            euclid.z = (landmarks[8].z - landmarks[5].z - landmarks[0].z);
+            // 🔥 圧縮版と旧版の両方に対応
+            Vector3[] landmarks = new Vector3[21];
 
+            if (data.h != null && data.h.Count >= 21)
+            {
+                // 圧縮版データ: [[x,y,z], [x,y,z], ...]
+                for (int i = 0; i < 21; i++)
+                {
+                    landmarks[i] = new Vector3(
+                        data.h[i][0],
+                        -data.h[i][1],
+                        data.h[i][2]
+                    );
+                }
+            }
+            else if (data.hands != null && data.hands.Count >= 21)
+            {
+                // 旧形式データ: [{x,y,z}, {x,y,z}, ...]
+                for (int i = 0; i < 21; i++)
+                {
+                    landmarks[i] = new Vector3(
+                        data.hands[i].x,
+                        -data.hands[i].y,
+                        data.hands[i].z
+                    );
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"⚠ ランドマーク不足");
+                return;
+            }
+
+            if (messageCount == 1)
+            {
+                Debug.Log($"✅ 初回データ受信成功！");
+                Debug.Log($"   手首座標: ({landmarks[0].x:F3}, {landmarks[0].y:F3}, {landmarks[0].z:F3})");
+            }
+
+            // スケール計算
             euclidDistance = Vector3.Distance(landmarks[5], landmarks[0]);
-            double distance = Math.Sqrt(Math.Pow(euclid.x,2) + Math.Pow(euclid.y, 2) + Math.Pow(euclid.z, 2));
-            Debug.Log(euclidDistance);
-            handTransform[0].position = new Vector3(landmarks[0].x, landmarks[0].y, landmarks[0].z + (euclidDistance * 20.0f));
-            euclidDistance = 0.0f;
-            //Debug.Log(landmarks[8]);
-            //Debug.Log(landmarks[5]);
 
-            euclid = new Vector3(0, 0, 0);.
+            // 手首の位置設定
+            if (handTransform[0] != null)
+            {
+                handTransform[0].position = new Vector3(
+                    landmarks[0].x,
+                    landmarks[0].y,
+                    landmarks[0].z + (euclidDistance * 20.0f)
+                );
+            }
 
-            // �l�����w�̉�]�K�p (5��6, 6��7, 7��8)
-            //ApplyBoneRotation(5, 6, landmarks);
-            //ApplyBoneRotation(6, 7, landmarks);
-            //ApplyBoneRotation(7, 8, landmarks);
-
-
-            // ��̂Ђ��] (0, 5, 17)
+            // 手のひら回転
             Vector3 wrist = landmarks[0];
             Vector3 indexBase = landmarks[5];
             Vector3 pinkyBase = landmarks[17];
@@ -126,60 +201,75 @@ public class toransform_finger_scale : MonoBehaviour
             Vector3 dir2 = (pinkyBase - wrist).normalized;
             Vector3 palmNormal = Vector3.Cross(dir1, dir2).normalized;
 
-            handTransform[0].rotation = Quaternion.LookRotation(palmNormal, dir1);
-
-            finger_rotation(handTransform, landmarks,  1, 4);//�l�����w
-            finger_rotation(handTransform, landmarks,  5, 8);//�l�����w
-            finger_rotation(handTransform, landmarks,  9,12);//���w
-            finger_rotation(handTransform, landmarks, 13,16);//��w
-            finger_rotation(handTransform, landmarks, 17,20);//���w
-
-            //handTransform[5].localRotation = Quaternion.Euler(0, 0, finger_rotation(landmarks, 5, 8));
-            //handTransform[6].localRotation = Quaternion.Euler(0, 0, finger_rotation(landmarks, 5, 8));
-            //handTransform[7].localRotation = Quaternion.Euler(0, 0, finger_rotation(landmarks, 5, 8));
-            //handTransform[8].localRotation = Quaternion.Euler(0, 0, finger_rotation(landmarks, 5, 8));
-
-        }
-        else
-        {
-            Debug.LogWarning("Received JSON is null or does not contain enough landmarks.");
-        }
-
-    }
-
-    private void ApplyBoneRotation(int from, int to, Vector3[] landmarks)
-    {
-        Vector3 dir = (landmarks[to] - landmarks[from]).normalized;
-        dir.y = -dir.y;
-        dir.x = -dir.x;
-        //dir.x = dir.x + 90f;
-        handTransform[from].rotation = Quaternion.LookRotation(dir);
-        //handTransform[from].rotation.x += handTransform[0].rotation.x;
-    }
-    void finger_rotation(Transform[] handTransform,Vector3[] landmarks,int baseFinger,int end) {
-        float straightDistance = Vector3.Distance(landmarks[baseFinger], landmarks[end]);
-        float totalJointDistance = Vector3.Distance(landmarks[baseFinger    ], landmarks[baseFinger + 1])
-                                 + Vector3.Distance(landmarks[baseFinger + 1], landmarks[baseFinger + 2])
-                                 + Vector3.Distance(landmarks[baseFinger + 2], landmarks[end]);
-        float bendRatio = Mathf.Clamp01(straightDistance / totalJointDistance);
-        float angle = (1f - bendRatio) * 90.0f;
-        
-        for (int i = baseFinger; i < end; i++) {
-            if (i == 1)
+            if (handTransform[0] != null)
             {
-                handTransform[i].localRotation = Quaternion.Euler(angle, -69f, -26.5f);
+                handTransform[0].rotation = Quaternion.LookRotation(palmNormal, dir1);
             }
-            else {
-                handTransform[i].localRotation = Quaternion.Euler(angle, 0, 0);
-            }
-                
+
+            // 各指の回転
+            finger_rotation(handTransform, landmarks, 1, 4);
+            finger_rotation(handTransform, landmarks, 5, 8);
+            finger_rotation(handTransform, landmarks, 9, 12);
+            finger_rotation(handTransform, landmarks, 13, 16);
+            finger_rotation(handTransform, landmarks, 17, 20);
+        }
+        catch (JsonException ex)
+        {
+            Debug.LogError($"❌ JSON解析エラー: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"❌ 予期しないエラー: {ex.Message}");
         }
     }
+    void finger_rotation(Transform[] handTransform, Vector3[] landmarks, int baseFinger, int end)
+    {
+        try
+        {
+            float straightDistance = Vector3.Distance(landmarks[baseFinger], landmarks[end]);
+            float totalJointDistance = Vector3.Distance(landmarks[baseFinger], landmarks[baseFinger + 1])
+                                     + Vector3.Distance(landmarks[baseFinger + 1], landmarks[baseFinger + 2])
+                                     + Vector3.Distance(landmarks[baseFinger + 2], landmarks[end]);
 
+            float bendRatio = straightDistance / totalJointDistance;
+            float angle = (1f - bendRatio) * 90.0f;
+
+            // デバッグ：最初の指（親指）のみログ出力
+            if (showDebugLogs && baseFinger == 1 && messageCount <= 3)
+            {
+                Debug.Log($"指回転 [{baseFinger}-{end}]: 角度={angle:F1}°, 曲げ率={bendRatio:F2}");
+            }
+
+            for (int i = baseFinger; i <= end; i++)
+            {
+                if (handTransform[i] == null)
+                {
+                    if (showDebugLogs && messageCount == 1)
+                    {
+                        Debug.LogWarning($"⚠ handTransform[{i}] is null");
+                    }
+                    continue;
+                }
+
+                if (i == 1)
+                {
+                    handTransform[i].localRotation = Quaternion.Euler(angle, -69f, -26.5f);
+                }
+                else
+                {
+                    handTransform[i].localRotation = Quaternion.Euler(angle, 0, 0);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"❌ finger_rotation エラー [{baseFinger}-{end}]: {ex.Message}");
+        }
+    }
 
     private void OnErrorMessageReceived(WebSocketConnection connection, string errorMessage)
     {
-        Debug.LogError($"WebSocket Error: {errorMessage}");
+        Debug.LogError($"❌ WebSocket Error: {errorMessage}");
     }
 
     private async UniTaskVoid SendMessagesPeriodically(CancellationToken cancellationToken)
@@ -190,7 +280,6 @@ public class toransform_finger_scale : MonoBehaviour
             {
                 var message = "Ping from Unity";
                 _connection.AddOutgoingMessage(message);
-                //Debug.Log($"Message sent to server: {message}");
             }
             await UniTask.Delay(TimeSpan.FromSeconds(5), cancellationToken: cancellationToken);
         }
@@ -198,7 +287,7 @@ public class toransform_finger_scale : MonoBehaviour
 
     private async UniTaskVoid Reconnect()
     {
-        Debug.Log("Attempting to reconnect...");
+        Debug.Log("🔄 再接続試行中...");
         await UniTask.Delay(TimeSpan.FromSeconds(5));
         if (_connection != null && _connection.State != WebSocketState.Connected)
         {
@@ -208,6 +297,7 @@ public class toransform_finger_scale : MonoBehaviour
 
     private void OnDestroy()
     {
+        Debug.Log("=== HandTracking Destroy ===");
         _cts.Cancel();
         _cts.Dispose();
         _shouldReconnect = false;
@@ -221,14 +311,14 @@ public class toransform_finger_scale : MonoBehaviour
     [Serializable]
     public class HandData
     {
-        public List<ReceivedJson> hands;
+        public List<ReceivedJson> hands;        // 旧形式
+        public List<List<float>> h;             // 新形式（圧縮版）
     }
-
-    [Serializable]
-    public class ReceivedJson
-    {
-        public float x;
-        public float y;
-        public float z;
-    }
+    //[Serializable]
+    //public class ReceivedJson
+    //{
+    //    public float x;
+    //    public float y;
+    //    public float z;
+    //}
 }

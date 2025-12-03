@@ -232,6 +232,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   model: {fileID: 473125290}
   animator1: {fileID: 473125293}
+  sholderBoneR: {fileID: 0}
+  sholderBoneL: {fileID: 0}
 --- !u!95 &473125293
 Animator:
   serializedVersion: 5
