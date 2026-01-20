@@ -1,84 +1,281 @@
 ﻿using System;
 using UnityEngine;
-using Cysharp.Threading.Tasks;
-using System.Threading;
-using MikeSchweitzer.WebSocket;
-using Newtonsoft.Json;
-using System.Collections.Generic;
+using System.IO;
 
-using UnityEngine.Animations;
-
-public class body_transform : MonoBehaviour
+public class BodyTransform : MonoBehaviour
 {
-
     private HumanPoseHandler poseHandler;
-    public HumanPose pose;
+    private HumanPose pose;
 
+    [Header("Model")]
     public GameObject model;
-    public Animator animator1;
+    private Animator animator;
 
-    public GameObject sholderBoneR;
-    public GameObject sholderBoneL;
+    [Header("Tuning (XY)")]
+    [Range(0f, 2f)] public float shoulderUpDownGain = 1.0f;
+    [Range(0f, 2f)] public float shoulderFrontBackGain = 1.0f;
+    [Range(0f, 2f)] public float elbowGain = 1.0f;
 
-    Vector3 sholder2ElbowR;
+    [Header("Depth (MediaPipe Z)")]
+    [Range(0f, 2f)] public float depthGain = 0.6f;
+    [Range(0f, 0.5f)] public float depthClamp = 0.25f;
 
-    private void Start()
+    [Header("Depth → Arm Down-Up")]
+    [Range(0f, 1f)] public float depthToUpDownGain = 0.35f;
+
+    [Header("Leg Tuning")]
+    [Range(0f, 2f)] public float legUpDownGain = 1.0f;
+
+
+    [Header("Smoothing")]
+    [Range(0f, 1f)] public float smoothFactor = 0.15f;
+
+    float[] smoothMuscles = new float[95];
+    private string totalLatencyLogPath;
+
+
+    void Start()
     {
-        if (model == null)
-        {
-            Debug.LogError("❌ modelがInspectorで設定されていません");
-            return;
-        }
-
-        animator1 = model.GetComponent<Animator>();
-        if (animator1 == null)
-        {
-            Debug.LogError("❌ Animatorが見つかりません");
-            return;
-        }
-
-        if (animator1.avatar == null || !animator1.avatar.isHuman)
-        {
-            Debug.LogError("❌ Avatarが設定されていない、またはHumanoidでありません");
-            return;
-        }
-
-        poseHandler = new HumanPoseHandler(animator1.avatar, animator1.transform);
+        animator = model.GetComponent<Animator>();
+        poseHandler = new HumanPoseHandler(animator.avatar, animator.transform);
         poseHandler.GetHumanPose(ref pose);
-        //pose.muscles[42] = -1.0f;
 
-        //sholderBoneR;
-        
+        for (int i = 0; i < smoothMuscles.Length; i++)
+            smoothMuscles[i] = pose.muscles[i];
+        animator = model.GetComponent<Animator>();
+        poseHandler = new HumanPoseHandler(animator.avatar, animator.transform);
+        poseHandler.GetHumanPose(ref pose);
+
+        for (int i = 0; i < smoothMuscles.Length; i++)
+            smoothMuscles[i] = pose.muscles[i];
+
+        // =========================
+        // 🔥 総遅延ログ初期化
+        // =========================
+        totalLatencyLogPath = Path.Combine(
+            Application.persistentDataPath,
+            "total_latency_log.csv"
+        );
+
+        if (!File.Exists(totalLatencyLogPath))
+        {
+            File.WriteAllText(
+                totalLatencyLogPath,
+                "ApplyTime,SendTime,TotalLatencyMs\n"
+            );
+        }
+
+        Debug.Log($"Total latency log path: {totalLatencyLogPath}");
     }
 
-    public void Update()
+    void Update()
     {
-        Vector3 rotation = GetBoneRotation(Variable_Share.landmarks[2], Variable_Share.landmarks[4]);
-        Debug.Log( (180.0f - Vector3.Angle(Variable_Share.landmarks[4] - Variable_Share.landmarks[2], Variable_Share.landmarks[2] - Variable_Share.landmarks[0])) / 90.0f - 1.0f);
+        var lm = GetLandmarksFullBody.poseLandmarks;
+        if (lm == null || lm.Length < 17) return;
 
-        //左腕の伸縮
-        pose.muscles[51] = (180.0f - Vector3.Angle(Variable_Share.landmarks[5] - Variable_Share.landmarks[3], Variable_Share.landmarks[3] - Variable_Share.landmarks[1])) / 90.0f - 1.0f;
-        
-        //右腕の伸縮
-        pose.muscles[42] = (180.0f - Vector3.Angle(Variable_Share.landmarks[4] - Variable_Share.landmarks[2], Variable_Share.landmarks[2] - Variable_Share.landmarks[0])) / 90.0f - 1.0f;
+        // =========================
+        // 右腕
+        // =========================
+        ApplyArm(
+            lm[12], lm[14], lm[16],transform.up,
+            39, 40, 41 ,42,
+            true
+        );
 
-        sholder2ElbowR = (Variable_Share.landmarks[4] - Variable_Share.landmarks[2]);
-        //pose.muscles[42] = rotation.x;
+        // =========================
+        // 左腕
+        // =========================
+        ApplyArm(
+            lm[11], lm[13], lm[15],transform.up,
+            48, 49, 50, 51,
+            false
+        );
+
+        // =========================
+        // 右脚
+        // =========================
+        ApplyLeg(
+            lm[24],  // RIGHT_HIP
+            lm[26],  // RIGHT_KNEE
+            lm[28],  // RIGHT_ANKLE
+            29
+        );
+
+        // =========================
+        // 左脚
+        // =========================
+        ApplyLeg(
+            lm[23],  // LEFT_HIP
+            lm[25],  // LEFT_KNEE
+            lm[27],  // LEFT_ANKLE
+            21
+        );
+
         poseHandler.SetHumanPose(ref pose);
+        double nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        double totalLatency = nowMs - GetLandmarksFullBody.lastReceivedTimestamp;
 
+        Debug.Log($"Total latency (after apply): {totalLatency:F1} ms");
+
+        // =========================
+        // 🔥 ファイル保存
+        // =========================
+        string line =
+            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}," +
+            $"{GetLandmarksFullBody.lastReceivedTimestamp}," +
+            $"{totalLatency:F1}\n";
+
+        File.AppendAllText(totalLatencyLogPath, line);
+    }
+
+    void ApplyArm(
+        Vector3 shoulder,
+        Vector3 elbow,
+        Vector3 wrist,
+        Vector3 bodyUp,
+        int muscleArmUD,
+        int muscleShoulderFB,
+        int muscleArmTwist,
+        int muscleElbow,
+        bool isRight
+    )
+    {
+        // =========================
+        // 上腕方向（XY）
+        // =========================
+        Vector3 upperDir = (elbow - shoulder).normalized;
+
+        // ===== 肩：前後（XY）=====
+        float frontBackXY = Vector3.Dot(upperDir, transform.forward);
+        smoothMuscles[muscleShoulderFB] = Mathf.Lerp(
+                            smoothMuscles[muscleShoulderFB],
+                            Mathf.Clamp(frontBackXY * shoulderFrontBackGain, -1f, 1f),
+                            smoothFactor
+                            );
+
+        pose.muscles[muscleShoulderFB] = smoothMuscles[muscleShoulderFB];
+
+        //pose.muscles[muscleShoulderFB] =
+        //    Mathf.Clamp(frontBackXY * shoulderFrontBackGain, -1f, 1f);
+
+        // ===== 肩：上下（XY）=====
+        float upDownXY = -Vector3.Dot(upperDir, transform.up);
+        smoothMuscles[muscleArmUD] = Mathf.Lerp(
+                    smoothMuscles[muscleArmUD],
+                    Mathf.Clamp(upDownXY * shoulderUpDownGain, -1f, 1f),
+                    smoothFactor
+                    );
+
+        pose.muscles[muscleArmUD] = smoothMuscles[muscleArmUD];
+
+        //pose.muscles[muscleArmUD] =
+        //    Mathf.Clamp(upDownXY * shoulderUpDownGain, -1f, 1f);
+
+        // =========================
+        // 肘
+        // =========================
+
+        smoothMuscles[muscleElbow] = Mathf.Lerp(
+                    smoothMuscles[muscleElbow],
+                    -CalcElbowBend(shoulder, elbow, wrist) * elbowGain,
+                    smoothFactor
+                    );
+
+        pose.muscles[muscleElbow] = smoothMuscles[muscleElbow];
+
+        //pose.muscles[muscleElbow] =
+        //    -CalcElbowBend(shoulder, elbow, wrist) * elbowGain;
+
+
+        // =====腕：回転=====
+        //不安定なので結局使ってません
+        //Vector3 upper = (elbow - shoulder).normalized;
+        //Vector3 lower = (wrist - elbow).normalized;
+
+        //// 前腕を上腕に直交する平面へ射影
+        //Vector3 lowerProj = Vector3.ProjectOnPlane(lower, upper).normalized;
+
+        //// 基準軸（上腕×体の上）
+        //Vector3 refAxis = Vector3.Cross(upper, bodyUp).normalized;
+
+        //// 符号付き角度
+        //float armTwist = Vector3.SignedAngle(refAxis, lowerProj, upper);
+
+        //armTwist = Mathf.Clamp(armTwist, -60f, 60f);
+        //armTwist *= 0.6f;
+
+
+        //smoothMuscles[muscleArmTwist] = Mathf.Lerp(
+        //            smoothMuscles[muscleArmTwist],
+        //            -1 * Mathf.Clamp(armTwist / 90f, -1f, 1f),
+        //            smoothFactor
+        //            );
+
+        //if (lowerProj.sqrMagnitude > 0.0001f)
+
+        //    pose.muscles[muscleArmTwist] = smoothMuscles[muscleArmTwist];
+
+        //pose.muscles[muscleArmTwist] = -1 * Mathf.Clamp(armTwist / 90f, -1f, 1f);
+
+
+
+        // =================================================
+        // 🔥 MediaPipe Z による奥行き補正
+        // =================================================
+        float depth = wrist.z - shoulder.z;          // 前に出すとマイナス
+        depth = Mathf.Clamp(depth, -depthClamp, depthClamp);
+
+        // 正規化（前 = +1）
+        float depthValue = -depth / depthClamp;
+        depthValue *= depthGain;
+
+        // --- Front-Back に加算 ---
+        pose.muscles[muscleShoulderFB] =
+            Mathf.Clamp(
+                pose.muscles[muscleShoulderFB] + depthValue,
+                -1f, 1f
+            );
+
+        // --- 🔥 Arm Down-Up にも加算 ---
+        pose.muscles[muscleArmUD] =
+            -1 * 
+            Mathf.Clamp(
+                pose.muscles[muscleArmUD]
+                - depthValue * depthToUpDownGain,
+                -1f, 1f
+            );
+    }
+
+    void ApplyLeg(
+    Vector3 hip,
+    Vector3 knee,
+    Vector3 ankle,
+    int muscleLegUD
+)
+    {
+        // 太もも方向
+        Vector3 thighDir = (knee - hip).normalized;
+
+        // 上下（脚上げ）
+        float upDown = -Vector3.Dot(thighDir, transform.up);
+
+        smoothMuscles[muscleLegUD] = Mathf.Lerp(
+            smoothMuscles[muscleLegUD],
+            Mathf.Clamp(upDown * legUpDownGain, -1f, 1f),
+            smoothFactor
+        );
+
+        pose.muscles[muscleLegUD] = smoothMuscles[muscleLegUD];
     }
 
 
-
-
-    Vector3 GetBoneRotation(Vector3 from, Vector3 to)
+    float CalcElbowBend(Vector3 shoulder, Vector3 elbow, Vector3 wrist)
     {
-        Vector3 direction = (to - from).normalized;
-        Vector3 rotation;
+        Vector3 upper = (shoulder - elbow).normalized;
+        Vector3 lower = (wrist - elbow).normalized;
 
-        rotation.x = Mathf.Atan2(direction.y,direction.z);
-        rotation.y = Mathf.Atan2(direction.x,direction.z);
-        rotation.z = Mathf.Atan2(direction.x, direction.y);
-        return rotation;
+        float angle = Vector3.Angle(upper, lower);
+        float t = Mathf.InverseLerp(180f, 60f, angle);
+        return Mathf.Clamp(t * 2f - 1f, -1f, 1f);
     }
 }

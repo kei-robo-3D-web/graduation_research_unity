@@ -366,6 +366,7 @@
 "Assets/scripts/test.cs"
 "Assets/scripts/test_transform.cs"
 "Assets/scripts/toransform_finger_scale.cs"
+"Assets/scripts/toransform_finger_scale_recording.cs"
 "Assets/scripts/toransform_finger_scale_smooth_ver1.0.cs"
 "Assets/scripts/toransform_rotation.cs"
 -langversion:9.0

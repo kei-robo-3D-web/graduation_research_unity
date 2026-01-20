@@ -233,7 +233,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6d69ffecab852ab438daa775e55737ba, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 710780729}
   m_SourcePrefab: {fileID: 100100000, guid: 6d69ffecab852ab438daa775e55737ba, type: 3}
 --- !u!1 &705507993
 GameObject:
@@ -329,6 +332,53 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 5.714, y: 284.69598, z: -25.117}
+--- !u!1 &710780728 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 6d69ffecab852ab438daa775e55737ba, type: 3}
+  m_PrefabInstance: {fileID: 319589713}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &710780729
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 710780728}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 92734891b55e4fe468efb99a4298dd5e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _connection: {fileID: 0}
+  hand:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  showDebugLogs: 1
+  smoothingFactor: 0.5
+  measureLatency: 1
+  isRecording: 0
+  recordingFileName: hand_recording
+  isPlayback: 0
+  playbackFileName: hand_recording
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -433,6 +483,7 @@ GameObject:
   - component: {fileID: 1745468684}
   - component: {fileID: 1745468685}
   - component: {fileID: 1745468686}
+  - component: {fileID: 1745468687}
   m_Layer: 0
   m_Name: Director
   m_TagString: Untagged
@@ -532,7 +583,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1745468679}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 423c954f6449d51499b44fa601ac5f6b, type: 3}
   m_Name: 
@@ -562,6 +613,49 @@ MonoBehaviour:
   - {fileID: 0}
   showDebugLogs: 1
   smoothingFactor: 0.5
+  measureLatency: 1
+--- !u!114 &1745468687
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1745468679}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 92734891b55e4fe468efb99a4298dd5e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _connection: {fileID: 0}
+  hand:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  showDebugLogs: 1
+  smoothingFactor: 0.5
+  measureLatency: 1
+  isRecording: 0
+  recordingFileName: hand_recording
+  isPlayback: 0
+  playbackFileName: hand_recording
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

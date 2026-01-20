@@ -4,122 +4,215 @@ using Cysharp.Threading.Tasks;
 using System.Threading;
 using MikeSchweitzer.WebSocket;
 using Newtonsoft.Json;
-using System.Collections.Generic;
+using System.IO;
 
-using UnityEngine.Animations;
-
-public class get_landmarks : MonoBehaviour
+public class GetLandmarksFullBody : MonoBehaviour
 {
-    public WebSocketConnection _connection;
-    private string _url = "ws://localhost:8765";
-    private bool _shouldReconnect = true;
-    private CancellationTokenSource _cts;
+    public WebSocketConnection connection;
+    private string url = "ws://localhost:8765";
+    private bool shouldReconnect = true;
+    private CancellationTokenSource cts;
+    public static double lastReceivedTimestamp;
 
+
+    // ===== 受信結果格納 =====
+    public static Vector3[] poseLandmarks = new Vector3[33];
+    public static Vector3[] leftHandLandmarks = new Vector3[21];
+    public static Vector3[] rightHandLandmarks = new Vector3[21];
+
+    // ===== レイテンシログ =====
+    private string latencyLogPath;
 
     private void Start()
     {
-        _cts = new CancellationTokenSource();
+        cts = new CancellationTokenSource();
 
-        _connection = gameObject.AddComponent<WebSocketConnection>();
-        _connection.DesiredConfig = new WebSocketConfig { Url = _url };
-        _connection.Connect();
-        _connection.StateChanged += OnStateChanged;
-        _connection.MessageReceived += OnMessageReceived;
-        _connection.ErrorMessageReceived += OnErrorMessageReceived;
+        // =========================
+        // ログファイル初期化
+        // =========================
+        latencyLogPath = Path.Combine(
+            Application.persistentDataPath,
+            "latency_log.csv"
+        );
 
-        SendMessagesPeriodically(_cts.Token).Forget();
-
-    }
-
-    private void OnStateChanged(WebSocketConnection connection, WebSocketState oldState, WebSocketState newState)
-    {
-        Debug.Log($"WebSocket state changed from {oldState} to {newState}");
-        if (newState == WebSocketState.Disconnected && _shouldReconnect)
+        if (!File.Exists(latencyLogPath))
         {
-            Reconnect().Forget();
+            File.WriteAllText(
+                latencyLogPath,
+                "ReceiveTime,SendTime,LatencyMs\n"
+            );
         }
+
+        Debug.Log($"Latency log path: {latencyLogPath}");
+
+        // =========================
+        // WebSocket 初期化
+        // =========================
+        connection = gameObject.AddComponent<WebSocketConnection>();
+        connection.DesiredConfig = new WebSocketConfig { Url = url };
+        connection.Connect();
+
+        connection.StateChanged += OnStateChanged;
+        connection.MessageReceived += OnMessageReceived;
+        connection.ErrorMessageReceived += OnErrorMessageReceived;
+
+        SendPing(cts.Token).Forget();
     }
 
-    private void OnMessageReceived(WebSocketConnection connection, WebSocketMessage message)
+    // ==============================
+    // WebSocket Events
+    // ==============================
+    private void OnStateChanged(
+        WebSocketConnection c,
+        WebSocketState oldState,
+        WebSocketState newState
+    )
     {
-        Debug.Log($"Raw JSON from server: {message.String}");
+        Debug.Log($"WebSocket: {oldState} → {newState}");
+        if (newState == WebSocketState.Disconnected && shouldReconnect)
+            Reconnect().Forget();
+    }
 
-
-
+    private void OnMessageReceived(WebSocketConnection c, WebSocketMessage msg)
+    {
         try
         {
-            var data = JsonConvert.DeserializeObject<BodyData>(message.String);
-            Debug.Log($"Raw JSON from server: {data.bodys.Count}");
-            //if (data != null && data.bodys != null && data.bodys.Count >= 14)
-            if (data != null && data.bodys != null)
+            var data = JsonConvert.DeserializeObject<BodyPacket>(msg.String);
+            if (data == null) return;
+
+            // =========================
+            // 🔥 レイテンシ計算
+            // =========================
+            lastReceivedTimestamp = data.t;
+
+            double receiveMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            double latencyMs = receiveMs - data.t;
+
+            Debug.Log($"Latency: {latencyMs:F1} ms");
+
+            // =========================
+            // 🔥 ログ保存（CSV）
+            // =========================
+            string line =
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}," +
+                $"{data.t}," +
+                $"{latencyMs:F1}\n";
+
+            File.AppendAllText(latencyLogPath, line);
+
+            // =========================
+            // Pose
+            // =========================
+            if (data.pose != null && data.pose.landmarks != null)
             {
-                for (int i = 0; i < 10; i++)
+                for (int i = 0; i < Mathf.Min(33, data.pose.landmarks.Length); i++)
                 {
-                    Variable_Share.landmarks[i] = new Vector3(data.bodys[i].x - 0.5f, -data.bodys[i].y + 1.5f, data.bodys[i].z);
-                    //IKTransform[i].position = landmarks[i];
+                    poseLandmarks[i] = Convert(data.pose.landmarks[i]);
                 }
             }
-            else
+
+            // =========================
+            // Left Hand
+            // =========================
+            if (data.leftHand != null && data.leftHand.landmarks != null)
             {
-                Debug.LogWarning("Received JSON is null or does not contain enough landmarks.");
+                for (int i = 0; i < Mathf.Min(21, data.leftHand.landmarks.Length); i++)
+                {
+                    leftHandLandmarks[i] = Convert(data.leftHand.landmarks[i]);
+                }
+            }
+
+            // =========================
+            // Right Hand
+            // =========================
+            if (data.rightHand != null && data.rightHand.landmarks != null)
+            {
+                for (int i = 0; i < Mathf.Min(21, data.rightHand.landmarks.Length); i++)
+                {
+                    rightHandLandmarks[i] = Convert(data.rightHand.landmarks[i]);
+                }
             }
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            Debug.LogError($"JSON parsing failed: {ex.Message}");
+            Debug.LogError($"JSON Parse Error: {e.Message}");
         }
     }
 
-
-    private void OnErrorMessageReceived(WebSocketConnection connection, string errorMessage)
+    private void OnErrorMessageReceived(WebSocketConnection c, string error)
     {
-        Debug.LogError($"WebSocket Error: {errorMessage}");
+        Debug.LogError($"WebSocket Error: {error}");
     }
 
-    private async UniTaskVoid SendMessagesPeriodically(CancellationToken cancellationToken)
+    // ==============================
+    // Utility
+    // ==============================
+    private Vector3 Convert(Landmark lm)
     {
-        while (!cancellationToken.IsCancellationRequested)
+        // MediaPipe → Unity 座標変換
+        return new Vector3(
+            lm.x - 0.5f,
+            -lm.y + 1.5f,
+            lm.z
+        );
+    }
+
+    private async UniTaskVoid SendPing(CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
         {
-            if (_connection != null && _connection.State == WebSocketState.Connected)
-            {
-                var message = "Ping from Unity";
-                _connection.AddOutgoingMessage(message);
-                Debug.Log($"Message sent to server: {message}");
-            }
-            await UniTask.Delay(TimeSpan.FromSeconds(5), cancellationToken: cancellationToken);
+            if (connection != null && connection.State == WebSocketState.Connected)
+                connection.AddOutgoingMessage("Ping");
+
+            await UniTask.Delay(TimeSpan.FromSeconds(5), cancellationToken: token);
         }
     }
 
     private async UniTaskVoid Reconnect()
     {
-        Debug.Log("Attempting to reconnect...");
         await UniTask.Delay(TimeSpan.FromSeconds(5));
-        if (_connection != null && _connection.State != WebSocketState.Connected)
-        {
-            _connection.Connect();
-        }
+        if (connection != null && connection.State != WebSocketState.Connected)
+            connection.Connect();
     }
 
     private void OnDestroy()
     {
-        _cts.Cancel();
-        _cts.Dispose();
-        _shouldReconnect = false;
-        if (_connection != null)
+        shouldReconnect = false;
+
+        if (cts != null)
         {
-            _connection.Disconnect();
-            _connection = null;
+            cts.Cancel();
+            cts.Dispose();
+        }
+
+        if (connection != null)
+        {
+            connection.Disconnect();
+            connection = null;
         }
     }
 
+    // ==============================
+    // JSON Classes
+    // ==============================
     [Serializable]
-    public class BodyData
+    public class BodyPacket
     {
-        public List<ReceivedJson> bodys;
+        public LandmarkBlock pose;
+        public LandmarkBlock leftHand;
+        public LandmarkBlock rightHand;
+        public LandmarkBlock face;
+        public double t;   // 送信時刻（ms）
     }
 
     [Serializable]
-    public class ReceivedJson
+    public class LandmarkBlock
+    {
+        public Landmark[] landmarks;
+    }
+
+    [Serializable]
+    public class Landmark
     {
         public float x;
         public float y;
