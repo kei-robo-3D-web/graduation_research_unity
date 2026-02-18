@@ -79,6 +79,7 @@ public class BodyTransform : MonoBehaviour
         ApplyArm(
             lm[12], lm[14], lm[16],transform.up,
             39, 40, 41 ,42,
+            //48, 49, 50, 51,
             true
         );
 
@@ -88,6 +89,7 @@ public class BodyTransform : MonoBehaviour
         ApplyArm(
             lm[11], lm[13], lm[15],transform.up,
             48, 49, 50, 51,
+            //39, 40, 41, 42,
             false
         );
 

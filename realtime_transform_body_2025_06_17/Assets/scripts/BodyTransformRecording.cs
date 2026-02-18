@@ -12,6 +12,10 @@ public class BodyTransformRecording : MonoBehaviour
     private HumanPoseHandler poseHandler;
     private HumanPose humanPose;
 
+    // =======================
+    // Recording / Playback
+    // =======================
+
     [Header("Recording")]
     public bool isRecording = false;
     public bool isPlayback = false;
@@ -22,6 +26,21 @@ public class BodyTransformRecording : MonoBehaviour
     private int playbackIndex;
 
     private List<RecordedFrame> frames = new List<RecordedFrame>();
+
+    // =======================
+    // 🔥 Latency Measurement
+    // =======================
+
+    [Header("Latency Recording")]
+    public bool isLatencyRecording = false;
+    private List<string> latencyBuffer = new List<string>();
+    private string latencyLogPath;
+
+    private int latencyCount = 0;
+    private float totalLatencySum = 0f;
+    private float minLatency = float.MaxValue;
+    private float maxLatency = 0f;
+    private float currentLatency = 0f;
 
     // =======================
     // 記録用データ構造
@@ -41,6 +60,12 @@ public class BodyTransformRecording : MonoBehaviour
         public int frameCount;
         public float duration;
         public string recordedDate;
+
+        // 🔥 遅延統計も保存
+        public float avgLatency;
+        public float minLatency;
+        public float maxLatency;
+        public int latencySamples;
     }
 
     // =======================
@@ -56,11 +81,27 @@ public class BodyTransformRecording : MonoBehaviour
 
         poseHandler = new HumanPoseHandler(animator.avatar, animator.transform);
         humanPose = new HumanPose();
+
+        // 🔥 CSV 保存先
+        latencyLogPath = Path.Combine(
+            Application.persistentDataPath,
+            "body_total_latency_log.csv"
+        );
+
+        if (!File.Exists(latencyLogPath))
+        {
+            File.WriteAllText(latencyLogPath,
+                "Time,SendTime,TotalLatencyMs\n");
+        }
+
+        Debug.Log($"Latency log path: {latencyLogPath}");
     }
 
     void Update()
     {
-        // R : Record
+        // =======================
+        // R : Record + Latency Start / Stop
+        // =======================
         if (Input.GetKeyDown(KeyCode.R))
         {
             if (!isRecording)
@@ -69,7 +110,9 @@ public class BodyTransformRecording : MonoBehaviour
                 StopRecording();
         }
 
+        // =======================
         // P : Playback
+        // =======================
         if (Input.GetKeyDown(KeyCode.P))
         {
             if (!isPlayback)
@@ -81,14 +124,13 @@ public class BodyTransformRecording : MonoBehaviour
         if (isRecording)
         {
             RecordFrame();
+            MeasureLatency();   // 🔥 同時に遅延測定
         }
 
         if (isPlayback)
         {
             PlaybackFrame();
         }
-
-
     }
 
     // =======================
@@ -97,16 +139,24 @@ public class BodyTransformRecording : MonoBehaviour
 
     void StartRecording()
     {
+        // --- モーション記録 ---
         frames.Clear();
         recordStartTime = Time.time;
         isRecording = true;
-        Debug.Log("🔴 Body Recording Start");
+
+        // --- 🔥 遅延測定初期化 ---
+        StartLatencyRecording();
+
+        Debug.Log("🔴 Body Recording + Latency Start");
     }
 
     void StopRecording()
     {
         isRecording = false;
+
+        StopLatencyRecording();
         SaveToJson();
+
         Debug.Log($"⏹ Recording Stop ({frames.Count} frames)");
     }
 
@@ -117,10 +167,71 @@ public class BodyTransformRecording : MonoBehaviour
         RecordedFrame frame = new RecordedFrame
         {
             timestamp = Time.time - recordStartTime,
-            muscles = new List<float>(humanPose.muscles) // 🔥 musclesはそのまま
+            muscles = new List<float>(humanPose.muscles)
         };
 
         frames.Add(frame);
+    }
+
+    // =======================
+    // 🔥 Latency Measurement
+    // =======================
+
+    void StartLatencyRecording()
+    {
+        isLatencyRecording = true;
+
+        latencyBuffer.Clear();
+        latencyCount = 0;
+        totalLatencySum = 0f;
+        minLatency = float.MaxValue;
+        maxLatency = 0f;
+
+        Debug.Log("⏱ Latency Recording START");
+    }
+
+    void StopLatencyRecording()
+    {
+        isLatencyRecording = false;
+
+        // CSV に一括保存
+        if (latencyBuffer.Count > 0)
+        {
+            File.AppendAllLines(latencyLogPath, latencyBuffer);
+            latencyBuffer.Clear();
+        }
+
+        float avg = (latencyCount > 0) ? totalLatencySum / latencyCount : 0f;
+
+        Debug.Log("⏱ Latency Recording STOP");
+        Debug.Log($"📊 Samples: {latencyCount}");
+        Debug.Log($"📊 Avg: {avg:F1} ms");
+        Debug.Log($"📊 Min: {minLatency:F1} ms");
+        Debug.Log($"📊 Max: {maxLatency:F1} ms");
+    }
+
+    void MeasureLatency()
+    {
+        if (!isLatencyRecording) return;
+
+        double nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        double totalLatency = nowMs - GetLandmarksFullBody.lastReceivedTimestamp;
+
+        currentLatency = (float)totalLatency;
+
+        latencyCount++;
+        totalLatencySum += currentLatency;
+
+        if (currentLatency < minLatency) minLatency = currentLatency;
+        if (currentLatency > maxLatency) maxLatency = currentLatency;
+
+        // CSV バッファ
+        string line =
+            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}," +
+            $"{GetLandmarksFullBody.lastReceivedTimestamp}," +
+            $"{currentLatency:F1}";
+
+        latencyBuffer.Add(line);
     }
 
     // =======================
@@ -166,7 +277,6 @@ public class BodyTransformRecording : MonoBehaviour
     {
         poseHandler.GetHumanPose(ref humanPose);
 
-        // 🔥 muscles 部分は変更しない（値をそのまま戻すだけ）
         for (int i = 0; i < humanPose.muscles.Length; i++)
         {
             humanPose.muscles[i] = frame.muscles[i];
@@ -181,12 +291,20 @@ public class BodyTransformRecording : MonoBehaviour
 
     void SaveToJson()
     {
+        float avgLatency = (latencyCount > 0) ? totalLatencySum / latencyCount : 0f;
+
         RecordingData data = new RecordingData
         {
             frames = frames,
             frameCount = frames.Count,
             duration = frames[frames.Count - 1].timestamp,
-            recordedDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+            recordedDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+
+            // 🔥 遅延統計も一緒に保存
+            avgLatency = avgLatency,
+            minLatency = minLatency,
+            maxLatency = maxLatency,
+            latencySamples = latencyCount
         };
 
         string json = JsonConvert.SerializeObject(data, Formatting.Indented);
@@ -194,6 +312,7 @@ public class BodyTransformRecording : MonoBehaviour
         File.WriteAllText(path, json);
 
         Debug.Log($"💾 Saved: {path}");
+        Debug.Log($"📊 Latency Avg={avgLatency:F1} / Min={minLatency:F1} / Max={maxLatency:F1}");
     }
 
     void LoadFromJson()
@@ -208,6 +327,44 @@ public class BodyTransformRecording : MonoBehaviour
 
         string json = File.ReadAllText(path);
         RecordingData data = JsonConvert.DeserializeObject<RecordingData>(json);
+
         frames = data.frames;
+
+        Debug.Log($"📊 Loaded Latency: Avg={data.avgLatency:F1} / Min={data.minLatency:F1} / Max={data.maxLatency:F1}");
+    }
+
+    // =======================
+    // GUI 表示（任意だが超おすすめ）
+    // =======================
+
+    void OnGUI()
+    {
+        GUIStyle style = new GUIStyle();
+        style.fontSize = 18;
+        style.fontStyle = FontStyle.Bold;
+
+        if (isRecording)
+        {
+            style.normal.textColor = Color.red;
+            GUI.Label(new Rect(10, 10, 350, 30), "🔴 BODY + LATENCY REC", style);
+
+            style.normal.textColor = Color.white;
+            GUI.Label(new Rect(10, 40, 300, 25), $"Current: {currentLatency:F1} ms", style);
+
+            if (latencyCount > 0)
+            {
+                float avg = totalLatencySum / latencyCount;
+
+                GUI.Label(new Rect(10, 70, 300, 25), $"Avg: {avg:F1} ms", style);
+                GUI.Label(new Rect(10, 100, 300, 25), $"Min: {minLatency:F1} ms", style);
+                GUI.Label(new Rect(10, 130, 300, 25), $"Max: {maxLatency:F1} ms", style);
+                GUI.Label(new Rect(10, 160, 300, 25), $"Samples: {latencyCount}", style);
+            }
+        }
+        else
+        {
+            style.normal.textColor = Color.gray;
+            GUI.Label(new Rect(10, 10, 350, 30), "R : Record + Latency / P : Playback", style);
+        }
     }
 }
